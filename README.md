@@ -12,7 +12,7 @@ SQL worker pool in Go.
 
 Usage:
 ```
-pool, err := pgwp.Connect("host=%s dbname=%s user=%s password=%s", 50, 50)
+pool, err := pgwp.Connect("postgres", "host=%s dbname=%s user=%s password=%s", 50, 50)
 if err != nil {
     log.Fatalf(err)
 }

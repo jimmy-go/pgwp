@@ -53,6 +53,21 @@ func (p *Pool) Close() {
 	}
 }
 
+// Run generic handle call.
+func (p *Pool) Run(fn func(db *sqlx.DB) error) error {
+	errc := make(chan error, 1)
+	task := func() error {
+		db := <-p.DBS
+		err := fn(db)
+		p.DBS <- db
+		errc <- err
+		return err
+	}
+	p.dispatcher.Add(task)
+	err := <-errc
+	return err
+}
+
 // Select wrapper for sqlx.Select.
 func (p *Pool) Select(results interface{}, query string, args ...interface{}) error {
 	errc := make(chan error, 1)
