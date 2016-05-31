@@ -1,16 +1,10 @@
 package pgwp
 
 import (
-	"errors"
+	"database/sql"
 
 	"github.com/jimmy-go/jobq"
 	"github.com/jmoiron/sqlx"
-	// init driver
-	_ "github.com/lib/pq"
-)
-
-var (
-	errDefault = errors.New("error making query call")
 )
 
 // Pool struct.
@@ -22,7 +16,7 @@ type Pool struct {
 }
 
 // Connect handle sqlx.Connect function and receives workers and queue size.
-func Connect(url string, workers, queueLen int) (*Pool, error) {
+func Connect(driver, url string, workers, queueLen int) (*Pool, error) {
 	d, err := jobq.New(workers, queueLen)
 	if err != nil {
 		return nil, err
@@ -34,7 +28,7 @@ func Connect(url string, workers, queueLen int) (*Pool, error) {
 		dispatcher: d,
 	}
 	for i := 0; i < workers; i++ {
-		db, err := sqlx.Connect("postgres", url)
+		db, err := sqlx.Connect(driver, url)
 		if err != nil {
 			return nil, err
 		}
@@ -48,40 +42,23 @@ func Connect(url string, workers, queueLen int) (*Pool, error) {
 	return p, nil
 }
 
-// Filter executes a query and returns a slice of results.
-func (p *Pool) Filter(results interface{}, query string) error {
-	errc := make(chan error, 1)
-	task := func() error {
-		db := <-p.DBS
-		err := db.Select(results, query)
-		p.DBS <- db
-		errc <- err
-		return err
-	}
-	p.dispatcher.Add(task)
-	err := <-errc
-	return err
-}
-
-// Locate executes a query and return one row.
-func (p *Pool) Locate(result interface{}, query string) error {
-	return nil
-}
-
 // Close closes all connections.
 func (p *Pool) Close() {
 	for db := range p.DBS {
 		db.Close()
+		if len(p.DBS) < 1 {
+			p.dispatcher.Stop()
+			return
+		}
 	}
 }
 
-// Insert func
-func (p *Pool) Insert(query string) error {
+// Select wrapper for sqlx.Select.
+func (p *Pool) Select(results interface{}, query string, args ...interface{}) error {
 	errc := make(chan error, 1)
 	task := func() error {
 		db := <-p.DBS
-		qr := db.MustExec(query)
-		_, err := qr.RowsAffected()
+		err := db.Select(results, query, args...)
 		p.DBS <- db
 		errc <- err
 		return err
@@ -89,4 +66,35 @@ func (p *Pool) Insert(query string) error {
 	p.dispatcher.Add(task)
 	err := <-errc
 	return err
+}
+
+// Get wrapper for sqlx.Get.
+func (p *Pool) Get(result interface{}, query string, args ...interface{}) error {
+	errc := make(chan error, 1)
+	task := func() error {
+		db := <-p.DBS
+		err := db.Get(result, query, args...)
+		p.DBS <- db
+		errc <- err
+		return err
+	}
+	p.dispatcher.Add(task)
+	err := <-errc
+	return err
+}
+
+// MustExec wrapper for sqlx.MustExec.
+func (p *Pool) MustExec(query string, args ...interface{}) sql.Result {
+	sqlc := make(chan sql.Result, 1)
+	task := func() error {
+		db := <-p.DBS
+		qr := db.MustExec(query, args...)
+		_, err := qr.RowsAffected()
+		p.DBS <- db
+		sqlc <- qr
+		return err
+	}
+	p.dispatcher.Add(task)
+	qr := <-sqlc
+	return qr
 }

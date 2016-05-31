@@ -50,7 +50,7 @@ func main() {
 		log.Printf("err [%s]", err)
 	}
 	for i := 0; i < 1000*1000; i++ {
-		// pool.Run(&W{ID: i})
+		pool.Run(&W{ID: i})
 		pool.Run(&I{ID: i})
 	}
 	pool.Shutdown()
@@ -67,13 +67,13 @@ type W struct {
 
 // Work func.
 func (w *W) Work(id int) {
-	// now := time.Now()
+	now := time.Now()
 	var users []*U
-	err := pgg.Filter(&users, "SELECT * FROM users LIMIT 100")
+	err := pgg.Filter(&users, `SELECT * FROM users LIMIT $1`, 100)
 	if err != nil {
 		log.Printf("Work : err [%s]", err)
 	}
-	// 	log.Printf("Work id [%v] results [%v] T[%s]", w.ID, len(users), time.Since(now))
+	log.Printf("Work id [%v] results [%v] T[%s]", w.ID, len(users), time.Since(now))
 }
 
 // I safisfies work.Worker
@@ -83,7 +83,8 @@ type I struct {
 
 // Work func.
 func (w *I) Work(id int) {
-	err := pgg.Insert(fmt.Sprintf("INSERT INTO users (email, name) VALUES ('email-%v', 'stress-%v')", w.ID, w.ID))
+	err := pgg.Insert(`INSERT INTO users (email, name) VALUES ($1, $2)`,
+		fmt.Sprintf("email-%v", w.ID), fmt.Sprintf("stress-%v", w.ID))
 	if err != nil {
 		log.Printf("Work : err [%s]", err)
 	}
