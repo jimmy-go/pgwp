@@ -56,7 +56,7 @@ func TestConnect(t *testing.T) {
 	{
 		var err error
 		var x *Pool
-		c, err := dockertest.ConnectToPostgreSQL(2, time.Second, func(url string) bool {
+		c, err := dockertest.ConnectToPostgreSQL(4, 5*time.Second, func(url string) bool {
 			// Check if postgres is responsive...
 			x, err = Connect("postgres", url, 10, 10)
 			return err == nil
