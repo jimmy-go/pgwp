@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	pgg        *pgwp.Pool
+	pgpool     *pgwp.Pool
 	dbHost     = flag.String("host", "", "PosgreSQL host.")
 	dbDatabase = flag.String("database", "", "PosgreSQL database.")
 	dbUsername = flag.String("u", "", "PosgreSQL username.")
@@ -40,7 +40,7 @@ func main() {
 
 	s := fmt.Sprintf("host=%s dbname=%s user=%s password=%s", *dbHost, *dbDatabase, *dbUsername, *dbPassword)
 	var err error
-	pgg, err = pgwp.Connect(s, 50, 50)
+	pgpool, err = pgwp.Connect("postgres", s, 50, 50)
 	if err != nil {
 		log.Fatalf(" err [%s]", err)
 	}
@@ -55,7 +55,7 @@ func main() {
 	}
 	pool.Shutdown()
 
-	pgg.Close()
+	pgpool.Close()
 
 	log.Printf("done T [%s]", time.Since(start))
 }
@@ -69,7 +69,7 @@ type W struct {
 func (w *W) Work(id int) {
 	now := time.Now()
 	var users []*U
-	err := pgg.Filter(&users, `SELECT * FROM users LIMIT $1`, 100)
+	err := pgpool.Select(&users, `SELECT * FROM users LIMIT $1`, 100)
 	if err != nil {
 		log.Printf("Work : err [%s]", err)
 	}
@@ -83,7 +83,7 @@ type I struct {
 
 // Work func.
 func (w *I) Work(id int) {
-	err := pgg.Insert(`INSERT INTO users (email, name) VALUES ($1, $2)`,
+	err := pgpool.MustExec(`INSERT INTO users (email, name) VALUES ($1, $2)`,
 		fmt.Sprintf("email-%v", w.ID), fmt.Sprintf("stress-%v", w.ID))
 	if err != nil {
 		log.Printf("Work : err [%s]", err)
