@@ -8,7 +8,6 @@ SQL worker pool in Go.
 [![GoDoc](http://godoc.org/github.com/jimmy-go/pgwp?status.png)](http://godoc.org/github.com/jimmy-go/pgwp)
 [![Coverage Status](https://coveralls.io/repos/github/jimmy-go/pgwp/badge.svg?branch=master&1)](https://coveralls.io/github/jimmy-go/pgwp?branch=master)
 
-
 ##
 
 Usage:
