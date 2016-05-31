@@ -18,10 +18,14 @@ before_install:
   - go get github.com/mattn/goveralls
   - if ! go get github.com/golang/tools/cmd/cover; then go get golang.org/x/tools/cmd/cover; fi
 
+before_script:
+  - psql -c 'create database travis_ci_test;' -U postgres
+
 script:
   - $HOME/gopath/bin/goveralls -service=travis-ci
 
 services:
+  - postgresql
   - docker
 
 # In Travis, we need to bind to 127.0.0.1 in order to get a working connection. This environment variable
