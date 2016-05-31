@@ -8,15 +8,18 @@ import (
 	"gopkg.in/ory-am/dockertest.v2"
 
 	"database/sql"
+
 	_ "github.com/lib/pq"
 )
 
+// Item struct.
 type Item struct {
 	ID   string         `db:"id"`
 	Name sql.NullString `db:"name"`
 }
 
 func TestConnect(t *testing.T) {
+	log.SetFlags(log.Lshortfile)
 	// must fail: workers, queue len
 	{
 		expected := "Could not set up PostgreSQL container."
