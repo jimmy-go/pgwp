@@ -3,6 +3,9 @@ package pgwp
 import (
 	"log"
 	"testing"
+	"time"
+
+	"gopkg.in/ory-am/dockertest.v2"
 
 	_ "github.com/lib/pq"
 )
@@ -10,25 +13,46 @@ import (
 func TestConnect(t *testing.T) {
 	// must fail: workers, queue len
 	{
-		_, err := Connect("postgres", "host=192.168.2.6 port=5432 dbname=lostsdb user=postgres password=xx123456", -1, -2)
-		if err == nil {
-			t.Fail()
+		var err error
+		var x *Pool
+		c, err := dockertest.ConnectToPostgreSQL(2, time.Second, func(url string) bool {
+			// Check if postgres is responsive...
+			x, err = Connect("postgres", url+"bad", 10, 10)
+			return err == nil
+		})
+		if err != nil {
+			log.Fatalf("Could not connect to database: %s", err)
 		}
+		c.KillRemove()
 	}
 	// must fail: bad connection
 	{
-		_, err := Connect("postgres", "host=192.168.2.6 port=5432 dbname=lostsdb user=postgres password=xx", 10, 10)
+		var err error
+		var x *Pool
+		c, err := dockertest.ConnectToPostgreSQL(2, time.Second, func(url string) bool {
+			// Check if postgres is responsive...
+			x, err = Connect("postgres", url, -1, -1)
+			return err == nil
+		})
 		if err == nil {
 			t.Fail()
 		}
+		c.KillRemove()
 	}
 	// normal escenario get
 	{
-		x, err := Connect("postgres", "host=192.168.2.6 port=5432 dbname=lostsdb user=postgres password=xx123456", 10, 10)
+		var err error
+		var x *Pool
+		c, err := dockertest.ConnectToPostgreSQL(2, time.Second, func(url string) bool {
+			// Check if postgres is responsive...
+			x, err = Connect("postgres", url, 10, 10)
+			return err == nil
+		})
 		if err != nil {
-			log.Printf("err [%s]", err)
+			log.Fatalf("Could not connect to database: %s", err)
 			t.Fail()
 		}
+		log.Printf("c [%v]", c)
 
 		var v struct {
 			ID string `db:"id"`
@@ -39,14 +63,22 @@ func TestConnect(t *testing.T) {
 			t.Fail()
 		}
 		x.Close()
+		c.KillRemove()
 	}
 	// normal escenario select
 	{
-		x, err := Connect("postgres", "host=192.168.2.6 port=5432 dbname=lostsdb user=postgres password=xx123456", 10, 10)
+		var err error
+		var x *Pool
+		c, err := dockertest.ConnectToPostgreSQL(2, time.Second, func(url string) bool {
+			// Check if postgres is responsive...
+			x, err = Connect("postgres", url, 10, 10)
+			return err == nil
+		})
 		if err != nil {
-			log.Printf("err [%s]", err)
+			log.Fatalf("Could not connect to database: %s", err)
 			t.Fail()
 		}
+		log.Printf("c [%v]", c)
 
 		var v []struct {
 			ID string `db:"id"`
@@ -60,5 +92,6 @@ func TestConnect(t *testing.T) {
 			t.Fail()
 		}
 		x.Close()
+		c.KillRemove()
 	}
 }
