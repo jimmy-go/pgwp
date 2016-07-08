@@ -6,7 +6,7 @@ SQL worker pool in Go.
 [![Build Status](https://travis-ci.org/jimmy-go/pgwp.svg?branch=master)](https://travis-ci.org/jimmy-go/pgwp)
 [![Go Report Card](https://goreportcard.com/badge/github.com/jimmy-go/pgwp)](https://goreportcard.com/report/github.com/jimmy-go/pgwp)
 [![GoDoc](http://godoc.org/github.com/jimmy-go/pgwp?status.png)](http://godoc.org/github.com/jimmy-go/pgwp)
-[![Coverage Status](https://coveralls.io/repos/github/jimmy-go/pgwp/badge.svg?branch=master)](https://coveralls.io/github/jimmy-go/pgwp?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/jimmy-go/pgwp/badge.svg?branch=master&1)](https://coveralls.io/github/jimmy-go/pgwp?branch=master&1)
 
 ##
 
