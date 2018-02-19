@@ -1,32 +1,40 @@
-####SQL worker pool around [sqlx](https://github.com/jmoiron/sqlx) in Go.
+## SQL worker pool wrapper for [sqlx](https://github.com/jmoiron/sqlx) in Go.
 
 [![License MIT](https://img.shields.io/npm/l/express.svg)](http://opensource.org/licenses/MIT)
 [![Build Status](https://travis-ci.org/jimmy-go/pgwp.svg?branch=master)](https://travis-ci.org/jimmy-go/pgwp)
 [![Go Report Card](https://goreportcard.com/badge/github.com/jimmy-go/pgwp)](https://goreportcard.com/report/github.com/jimmy-go/pgwp)
 [![GoDoc](http://godoc.org/github.com/jimmy-go/pgwp?status.png)](http://godoc.org/github.com/jimmy-go/pgwp)
-[![Coverage Status](https://coveralls.io/repos/github/jimmy-go/pgwp/badge.svg?branch=master&1)](https://coveralls.io/github/jimmy-go/pgwp?branch=master&1)
+[![Coverage Status](https://coveralls.io/repos/github/jimmy-go/pgwp/badge.svg?branch=master)](https://coveralls.io/github/jimmy-go/pgwp?branch=master)
 
-#####Usage:
+### Install:
 
 ```
-ws := 10 // 10 workers/connections.
-qlen := 20 // 20 channel queue length before block.
-pool, err := pgwp.Connect("postgres", "connection string", ws, qlen)
-// err check
+go get gopkg.in/jimmy-go/pgwp.v0
+```
+
+### Usage:
+
+Equal to sqlx, just change Connect func by Open func.
+
+```
+// NOTE: Declare a new pool with 5 connections (*sqlx.DB).
+db, err := pgwp.Open("postgres", "connection-string", 5)
 
 var list []Item
-pool.Select(&list, "SELECT * FROM people WHERE name=$1 LIMIT 10", "lisa" )
+db.SelectContext(ctx, &list, "SELECT * FROM people WHERE name=$1 LIMIT 10", "lisa" )
 ```
 
-### Credits:
+### Notes:
 
-https://github.com/jmoiron/sqlx
++ Only Context methods are supported. This ensures Go good practices.
++ Really useful working with SQLite because of [this](https://github.com/mattn/go-sqlite3/issues/50).
++ For not implemented sqlx methods use Execute method.
 
-### license:
+### License:
 
 The MIT License (MIT)
 
-Copyright (c) 2016 Angel Del Castillo
+Copyright (c) 2016 Angel del Castillo
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

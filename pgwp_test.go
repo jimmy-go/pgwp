@@ -1,117 +1,81 @@
 package pgwp
 
 import (
+	"context"
+	"fmt"
 	"log"
 	"testing"
-	"time"
 
-	"gopkg.in/ory-am/dockertest.v2"
-
-	"database/sql"
-
+	// import driver.
 	_ "github.com/lib/pq"
+	"github.com/stretchr/testify/assert"
+
+	dockertest "gopkg.in/ory/dockertest.v3"
 )
 
-// Item struct.
-type Item struct {
-	ID   string         `db:"id"`
-	Name sql.NullString `db:"name"`
+func connectDB() (*Pool, error) {
+	var err error
+	var dpool *dockertest.Pool
+	dpool, err = dockertest.NewPool("")
+	if err != nil {
+		return nil, err
+	}
+	resource, err := dpool.Run("postgres", "9.6", nil)
+	if err != nil {
+		return nil, err
+	}
+	var x *Pool
+	if err = dpool.Retry(func() error {
+		x, err = Open("postgres", fmt.Sprintf("postgres://postgres:secret@localhost:%s/postgres?sslmode=disable", resource.GetPort("5432/tcp")), 5)
+		if err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return x, nil
 }
 
-func TestConnect(t *testing.T) {
+func TestConnectAndSelect(t *testing.T) {
 	log.SetFlags(log.Lshortfile)
-	// must fail: workers, queue len
-	{
-		expected := "Could not set up PostgreSQL container."
-		var err error
-		var x *Pool
-		c, err := dockertest.ConnectToPostgreSQL(0, time.Second, func(url string) bool {
-			// Check if postgres is responsive...
-			x, err = Connect("postgres", url+"bad", 10, 10)
-			return err == nil
-		})
-		if err == nil {
-			log.Printf("expected [%s] actual [%s]", expected, err)
-			t.Fail()
-		}
-		c.KillRemove()
-	}
-	// must fail: bad connection
-	{
-		expected := "Could not set up PostgreSQL container."
-		var err error
-		var x *Pool
-		c, err := dockertest.ConnectToPostgreSQL(0, time.Second, func(url string) bool {
-			// Check if postgres is responsive...
-			x, err = Connect("postgres", url, -1, -1)
-			return err == nil
-		})
-		if err == nil {
-			log.Printf("expected [%s] actual [%s]", expected, err)
-			t.Fail()
-		}
-		c.KillRemove()
-	}
-	// Get and Select
-	{
-		var err error
-		var x *Pool
-		c, err := dockertest.ConnectToPostgreSQL(4, 5*time.Second, func(url string) bool {
-			// Check if postgres is responsive...
-			x, err = Connect("postgres", url, 10, 10)
-			return err == nil
-		})
-		if err != nil {
-			log.Fatalf("Could not connect to database: %s", err)
-			t.Fail()
-		}
-		prepare(x)
 
-		var one Item
-		err = x.Get(&one, "SELECT * FROM mockdata WHERE name=$1", "two")
-		if err != nil {
-			log.Printf("Get err [%s]", err)
-			t.Fail()
-		}
+	db, err := connectDB()
+	assert.Nil(t, err)
+	assert.NotNil(t, db)
 
-		var list []*Item
-		err = x.Select(&list, "SELECT * FROM mockdata LIMIT 2")
-		if err != nil {
-			log.Printf("Select err [%s]", err)
-			t.Fail()
-		}
-		if len(list) != 2 {
-			t.Fail()
-		}
-		log.Printf("Get result [%#v] Select result [%#v]", one, list)
-		x.Close()
-		c.KillRemove()
+	err = migrateSchema(db)
+	assert.Nil(t, err)
+
+	var list []struct {
+		ID   string `db:"id"`
+		Name string `db:"name"`
 	}
+	ctx := context.TODO()
+	err = db.SelectContext(ctx, &list, `SELECT id,name FROM mockdata LIMIT 3`)
+	assert.Nil(t, err)
+	assert.EqualValues(t, 3, len(list))
 }
 
-// prepare generate mock data.
-func prepare(pool *Pool) {
-	qr := pool.MustExec(`
-	CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-	CREATE TABLE mockdata
-	(
-		id uuid NOT NULL DEFAULT uuid_generate_v1mc(),
-		name text,
-		CONSTRAINT mockdata_pkey PRIMARY KEY (id)
-	)
-	WITH (
-		OIDS=FALSE
-	);
-	INSERT INTO mockdata (name) VALUES('one');
-	INSERT INTO mockdata (name) VALUES('two');
-	INSERT INTO mockdata (name) VALUES('three');
+// migrateSchema generate mock data.
+func migrateSchema(pool *Pool) error {
+	ctx := context.TODO()
+	err := pool.ExecContext(ctx, `
+		CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+		CREATE TABLE mockdata
+		(
+			id uuid NOT NULL DEFAULT uuid_generate_v1mc(),
+			name text,
+			CONSTRAINT mockdata_pkey PRIMARY KEY (id)
+		)
+		WITH (
+			OIDS=FALSE
+		);
+
+		INSERT INTO mockdata (name) VALUES('one');
+		INSERT INTO mockdata (name) VALUES('two');
+		INSERT INTO mockdata (name) VALUES('three') RETURNING id;
 	`)
-	_, err := qr.LastInsertId()
-	if err != nil {
-		log.Printf("prepare :  last insert id err [%s]", err)
-	}
-	_, err = qr.RowsAffected()
-	if err != nil {
-		log.Printf("prepare : rows affected err [%s]", err)
-	}
+	return err
 }
