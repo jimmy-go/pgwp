@@ -3,15 +3,7 @@ sudo: required
 language: go
 
 go:
-  - 1.4.2
-  - 1.5.3
-  - 1.6
-  - tip
-
-# allow failures only on last version of go.
-matrix:
-  allow_failures:
-    - go: tip
+  - 1.9.3
 
 before_install:
   - go get github.com/axw/gocov/gocov
@@ -19,14 +11,13 @@ before_install:
   - if ! go get github.com/golang/tools/cmd/cover; then go get golang.org/x/tools/cmd/cover; fi
 
 before_script:
-  - psql -c 'create database travis_ci_test;' -U postgres
+    - go get github.com/Masterminds/glide
+    - glide install
 
 script:
   - $HOME/gopath/bin/goveralls -service=travis-ci
-
-services:
-  - postgresql
-  - docker
+  - make
+  - make test
 
 # In Travis, we need to bind to 127.0.0.1 in order to get a working connection. This environment variable
 # tells dockertest to do that.
