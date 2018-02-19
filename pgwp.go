@@ -38,8 +38,8 @@ func (p *Pool) Close() error {
 	}
 }
 
-// Exec allows database operations that are not yet implemented.
-func (p *Pool) Exec(fn func(db *sqlx.DB) error) error {
+// Execute allows database operations that are not yet implemented.
+func (p *Pool) Execute(fn func(db *sqlx.DB) error) error {
 	for {
 		select {
 		case db := <-p.dbc:
@@ -52,21 +52,21 @@ func (p *Pool) Exec(fn func(db *sqlx.DB) error) error {
 
 // SelectContext wrapper for sqlx.SelectContext.
 func (p *Pool) SelectContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error {
-	return p.Exec(func(db *sqlx.DB) error {
+	return p.Execute(func(db *sqlx.DB) error {
 		return db.SelectContext(ctx, dest, query, args...)
 	})
 }
 
 // GetContext wrapper for sqlx.GetContext.
 func (p *Pool) GetContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error {
-	return p.Exec(func(db *sqlx.DB) error {
+	return p.Execute(func(db *sqlx.DB) error {
 		return db.GetContext(ctx, dest, query, args...)
 	})
 }
 
 // ExecContext wrapper for sqlx.ExecContext.
 func (p *Pool) ExecContext(ctx context.Context, query string, args ...interface{}) error {
-	return p.Exec(func(db *sqlx.DB) error {
+	return p.Execute(func(db *sqlx.DB) error {
 		_, err := db.ExecContext(ctx, query, args...)
 		if err != nil {
 			return err

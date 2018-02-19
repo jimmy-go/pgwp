@@ -37,15 +37,24 @@ func connectDB() (*Pool, error) {
 	return x, nil
 }
 
-func TestConnect(t *testing.T) {
+func TestConnectAndSelect(t *testing.T) {
 	log.SetFlags(log.Lshortfile)
 
-	pool, err := connectDB()
+	db, err := connectDB()
 	assert.Nil(t, err)
-	assert.NotNil(t, pool)
+	assert.NotNil(t, db)
 
-	err = migrateSchema(pool)
+	err = migrateSchema(db)
 	assert.Nil(t, err)
+
+	var list []struct {
+		ID   string `db:"id"`
+		Name string `db:"name"`
+	}
+	ctx := context.TODO()
+	err = db.SelectContext(ctx, &list, `SELECT id,name FROM mockdata LIMIT 3`)
+	assert.Nil(t, err)
+	assert.EqualValues(t, 3, len(list))
 }
 
 // migrateSchema generate mock data.
